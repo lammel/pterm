@@ -1,6 +1,7 @@
 package pterm
 
 import (
+	"io"
 	"strings"
 
 	"atomicgo.dev/cursor"
@@ -25,6 +26,7 @@ type InteractiveTextInputPrinter struct {
 	DefaultText string
 	MultiLine   bool
 	Mask        string
+	Writer      io.Writer
 
 	input      []string
 	cursorXPos int
@@ -56,6 +58,12 @@ func (p InteractiveTextInputPrinter) WithMask(mask string) *InteractiveTextInput
 	return &p
 }
 
+// WithWriter sets the custom Writer.
+func (p InteractiveTextInputPrinter) WithWriter(writer io.Writer) *InteractiveTextInputPrinter {
+	p.Writer = writer
+	return &p
+}
+
 // Show shows the interactive select menu and returns the selected entry.
 func (p InteractiveTextInputPrinter) Show(text ...string) (string, error) {
 	// should be the first defer statement to make sure it is executed last
@@ -75,7 +83,7 @@ func (p InteractiveTextInputPrinter) Show(text ...string) (string, error) {
 		areaText = p.TextStyle.Sprintf("%s: ", text[0])
 	}
 	p.text = areaText
-	area, err := DefaultArea.Start(areaText)
+	area, err := DefaultArea.WithWriter(p.Writer).Start(areaText)
 	defer area.Stop()
 	if err != nil {
 		return "", err
@@ -190,7 +198,7 @@ func (p InteractiveTextInputPrinter) Show(text ...string) (string, error) {
 	}
 
 	// Add new line
-	Println()
+	Fprintln(p.Writer)
 
 	for i, s := range p.input {
 		if i < len(p.input)-1 {
@@ -226,6 +234,7 @@ func (p InteractiveTextInputPrinter) updateArea(area *AreaPrinter) string {
 	}
 
 	cursor.StartOfLine()
+
 	area.Update(areaText)
 	cursor.Up(len(p.input) - p.cursorYPos)
 	cursor.StartOfLine()

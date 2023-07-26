@@ -135,13 +135,13 @@ func (p *InteractiveSelectPrinter) Show(text ...string) (string, error) {
 		}
 	}
 
-	area, err := DefaultArea.Start(p.renderSelectMenu())
+	area, err := DefaultArea.Start(p.renderSelectMenu(nil))
 	defer area.Stop()
 	if err != nil {
 		return "", fmt.Errorf("could not start area: %w", err)
 	}
 
-	area.Update(p.renderSelectMenu())
+	area.Update(p.renderSelectMenu(area))
 
 	cursor.Hide()
 	defer cursor.Show()
@@ -165,12 +165,12 @@ func (p *InteractiveSelectPrinter) Show(text ...string) (string, error) {
 				p.displayedOptionsStart = 0
 				p.displayedOptionsEnd = maxHeight
 				p.displayedOptions = append([]string{}, p.fuzzySearchMatches[:maxHeight]...)
-				area.Update(p.renderSelectMenu())
+				area.Update(p.renderSelectMenu(area))
 			}
 		case keys.Space:
 			p.fuzzySearchString += " "
 			p.selectedOption = 0
-			area.Update(p.renderSelectMenu())
+			area.Update(p.renderSelectMenu(area))
 		case keys.Backspace:
 			// Remove last character from fuzzy search string
 			if len(p.fuzzySearchString) > 0 {
@@ -182,7 +182,7 @@ func (p *InteractiveSelectPrinter) Show(text ...string) (string, error) {
 				p.fuzzySearchMatches = append([]string{}, p.Options...)
 			}
 
-			p.renderSelectMenu()
+			p.renderSelectMenu(area)
 
 			if len(p.fuzzySearchMatches) > p.MaxHeight {
 				maxHeight = p.MaxHeight
@@ -195,7 +195,7 @@ func (p *InteractiveSelectPrinter) Show(text ...string) (string, error) {
 			p.displayedOptionsEnd = maxHeight
 			p.displayedOptions = append([]string{}, p.fuzzySearchMatches[p.displayedOptionsStart:p.displayedOptionsEnd]...)
 
-			area.Update(p.renderSelectMenu())
+			area.Update(p.renderSelectMenu(area))
 		case keys.Up:
 			if len(p.fuzzySearchMatches) == 0 {
 				return false, nil
@@ -218,7 +218,7 @@ func (p *InteractiveSelectPrinter) Show(text ...string) (string, error) {
 				p.displayedOptions = append([]string{}, p.fuzzySearchMatches[p.displayedOptionsStart:p.displayedOptionsEnd]...)
 			}
 
-			area.Update(p.renderSelectMenu())
+			area.Update(p.renderSelectMenu(area))
 		case keys.Down:
 			if len(p.fuzzySearchMatches) == 0 {
 				return false, nil
@@ -238,7 +238,7 @@ func (p *InteractiveSelectPrinter) Show(text ...string) (string, error) {
 				p.displayedOptions = append([]string{}, p.fuzzySearchMatches[p.displayedOptionsStart:p.displayedOptionsEnd]...)
 			}
 
-			area.Update(p.renderSelectMenu())
+			area.Update(p.renderSelectMenu(area))
 		case keys.CtrlC:
 			cancel()
 			return true, nil
@@ -260,10 +260,14 @@ func (p *InteractiveSelectPrinter) Show(text ...string) (string, error) {
 	return p.result, nil
 }
 
-func (p *InteractiveSelectPrinter) renderSelectMenu() string {
+func (p *InteractiveSelectPrinter) renderSelectMenu(area *AreaPrinter) string {
 	var content string
+	var debug string
+	if area != nil {
+		debug = fmt.Sprintf("(h:%d,ch:%d,cy:%d)", area.area.Height, area.area.ContentHeight, area.area.CursorPosY)
+	}
 	if p.Filter {
-		content += Sprintf("%s %s: %s\n", p.text, p.SelectorStyle.Sprint("[type to search]"), p.fuzzySearchString)
+		content += Sprintf("%s %s: %s\n", p.text+debug, p.SelectorStyle.Sprint("[type to search]"), p.fuzzySearchString)
 	} else {
 		content += Sprintf("%s:\n", p.text)
 	}
